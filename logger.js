@@ -3,12 +3,16 @@ class Logger {
     this.logDir = logDir;
   }
 
-    static getMessage(type) {
+  static getMessage(type) {
     switch (type) {
-      case 'success': return 'Everything went according to plan! Hooray!';
-      case 'error':   return 'Oops, error! Someone broke something!';
-      case 'warning': return 'Caution! This is a warning!';
-      default:        return 'Unknown log type :/';
+      case "success":
+        return "Everything went according to plan! Hooray!";
+      case "error":
+        return "Oops, error! Someone broke something!";
+      case "warning":
+        return "Caution! This is a warning!";
+      default:
+        return "Unknown log type :/";
     }
   }
 
@@ -16,7 +20,7 @@ class Logger {
     const entry = {
       timestamp: new Date().toISOString(),
       type,
-      message: Logger.getMessage(type)
+      message: Logger.getMessage(type),
     };
     return entry;
   }
