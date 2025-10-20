@@ -1,0 +1,15 @@
+{
+  "name": "hometask1",
+  "version": "1.0.0",
+  "description": "Logger",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node generator.js",
+    "analyze": "node analyzer.js"
+  },
+  "keywords": [],
+  "author": "Vlad",
+  "license": "ISC",
+  "type": "commonjs"
+}
