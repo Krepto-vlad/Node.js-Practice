@@ -18,7 +18,7 @@ This project consists of two Node.js applications:
 
 1. To start the Log Generator use: "npm start" or "node generator.js"
 
-This will start generating logs in the /logs folder.
+This will start generating logs in the **/logs** folder.
 
 - A new folder will be created every minute.
 - A new log file will be created every 10 seconds in the current minute's folder.
@@ -30,9 +30,9 @@ You can analyze all logs or filter by type.
 - Analyze all logs: "npm run analyze" or "node analyzer.js"
 
 - Filter logs by type:
-    "npm run analyze -- --type success"
-    "npm run analyze -- --type error"
-    "npm run analyze -- --type warning"
+    "npm run analyze -- --type success",
+    "npm run analyze -- --type error",
+    "npm run analyze -- --type warning",
 
 - Show help: "npm run analyze -- --help"
 
