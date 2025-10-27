@@ -1,9 +1,4 @@
-# Log Generator & Analyzer
-
-This project consists of two Node.js applications:
-
-- **Log Generator**: Periodically creates folders and log files with random log entries.
-- **Log Analyzer**: Analyzes generated logs and provides statistics, with CLI filtering support.
+# Backend Server
 
 ---
 
@@ -16,28 +11,10 @@ This project consists of two Node.js applications:
 
 ## Usage
 
-1. To start the Log Generator use: "npm start" or "node generator.js"
+1. To run the server use: "npm start" or "node server.js"
 
-This will start generating logs in the **/logs** folder.
-
-- A new folder will be created every minute.
-- A new log file will be created every 10 seconds in the current minute's folder.
-- To stop the generator, type exit in the console or press Ctrl+C.
-
-2. Analyze Logs
-You can analyze all logs or filter by type.
-
-- Analyze all logs: "npm run analyze" or "node analyzer.js"
-
-- Filter logs by type:
-    "npm run analyze -- --type success",
-    "npm run analyze -- --type error",
-    "npm run analyze -- --type warning",
-
-- Show help: "npm run analyze -- --help"
-
+This will start server at http://localhost:3333.
 ---
 
 ## Notes
-- Make sure the generator is running for logs to be available for analysis.
-- The /logs folder will be created automatically if it does not exist.
+- Articles are stored as individual .json files in the **/data** folder.
