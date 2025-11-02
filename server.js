@@ -3,8 +3,11 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid'); 
 const cors = require('cors');
-const { PORT, DATA_DIR } = require('./constants');
+const { DATA_DIR } = require('./constants');
+require('dotenv').config();
 
+const PORT = process.env.PORT || 3001;
+ 
 const app = express();
 app.use(cors());
 app.use(express.json());
