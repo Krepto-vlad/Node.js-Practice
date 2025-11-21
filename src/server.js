@@ -13,7 +13,7 @@ const healthCheck = require("./utils/healthCheck");
 const http = require("http");
 const { Server } = require("socket.io");
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3333;
 
 const app = express();
 const server = http.createServer(app);
