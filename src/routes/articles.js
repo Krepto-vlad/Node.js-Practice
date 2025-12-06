@@ -10,7 +10,7 @@ const {
   MAX_FILE_SIZE,
   MAX_FILES_PER_UPLOAD,
 } = require("../constants");
-const { getArticleById, updateArticle } = require("../models/articleModel");
+const { getArticleById, updateArticle } = require("../models-old/articleModel");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, ATTACHMENTS_DIR),

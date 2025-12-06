@@ -5,7 +5,7 @@ const {
   createArticle,
   updateArticle,
   deleteArticle,
-} = require("../models/articleModel");
+} = require("../models-old/articleModel");
 
 exports.list = async (req, res) => {
   try {
