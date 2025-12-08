@@ -10,7 +10,9 @@ const {
   MAX_FILE_SIZE,
   MAX_FILES_PER_UPLOAD,
 } = require("../constants");
-const { getArticleById, updateArticle } = require("../models-old/articleModel");
+const db = require("../../models");
+const Article = db.Article;
+const Attachment = db.Attachment;
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, ATTACHMENTS_DIR),
@@ -29,6 +31,9 @@ const upload = multer({
   limits: { fileSize: MAX_FILE_SIZE },
 });
 
+const commentsRouter = require("./comments");
+router.use("/:articleId/comments", commentsRouter);
+
 router.get("/", articlesController.list);
 router.get("/:id", articlesController.get);
 router.post("/", articlesController.create);
@@ -40,7 +45,7 @@ router.post(
   upload.array("files", MAX_FILES_PER_UPLOAD),
   async (req, res) => {
     try {
-      const article = await getArticleById(req.params.id);
+      const article = await Article.findByPk(req.params.id);
       if (!article)
         return res.status(404).json({ error: "Article not found." });
 
@@ -54,17 +59,16 @@ router.post(
         `Uploading ${req.files.length} file(s) to article ${req.params.id}`
       );
 
-      article.attachments = article.attachments || [];
-      req.files.forEach((file) => {
-        article.attachments.push({
+      for (const file of req.files) {
+        await Attachment.create({
+          articleId: req.params.id,
           filename: file.filename,
           originalname: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
         });
-      });
+      }
 
-      await updateArticle(req.params.id, article);
       res.notify &&
         res.notify("article-updated", { id: req.params.id, type: "file" });
       res.json({
@@ -82,8 +86,17 @@ router.delete("/:id/attachments/:filename", async (req, res) => {
   try {
     const { id } = req.params;
     const filename = decodeURIComponent(req.params.filename);
-    const article = await getArticleById(id);
+    
+    const article = await Article.findByPk(id);
     if (!article) return res.status(404).json({ error: "Article not found." });
+
+    const attachment = await Attachment.findOne({
+      where: { articleId: id, filename: filename },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({ error: "Attachment not found." });
+    }
 
     const filePath = path.join(ATTACHMENTS_DIR, filename);
     console.log("Trying to delete:", filePath);
@@ -92,14 +105,10 @@ router.delete("/:id/attachments/:filename", async (req, res) => {
       await fs.promises.unlink(filePath);
       console.log("File deleted successfully:", filename);
     } catch (err) {
-      console.error("Delete error:", err);
-      return res.status(404).json({ error: "File not found." });
+      console.error("Delete file error:", err);
     }
 
-    article.attachments = (article.attachments || []).filter(
-      (file) => file.filename !== filename
-    );
-    await updateArticle(id, article);
+    await attachment.destroy();
 
     res.notify &&
       res.notify("article-updated", { id: req.params.id, type: "file-delete" });

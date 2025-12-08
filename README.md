@@ -22,7 +22,7 @@ This will start server at http://localhost:3333.
 ## Database setup
 
 1. Create a database in PostgreSQL with name "NodeJSPrac".
-2. Fill in .env with your data:
+2. Fill in .env with your data (**you can check .env.example**):
    DB_HOST=localhost
    DB_PORT=5432
    DB_NAME=your_db_name
