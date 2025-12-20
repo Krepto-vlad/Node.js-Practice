@@ -5,11 +5,12 @@ const morgan = require("morgan");
 const compression = require("compression");
 const cors = require("cors");
 const fs = require("fs");
-const { DATA_DIR, ATTACHMENTS_DIR } = require("./constants");
+const { ATTACHMENTS_DIR } = require("./constants");
 const articlesRoutes = require("./routes/articles");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
 const healthCheck = require("./utils/healthCheck");
+const workspacesRoutes = require("./routes/workspaces");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -27,7 +28,6 @@ app.use(compression());
 app.use(express.json());
 app.use(rateLimiter);
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true });
 
 io.on("connection", (socket) => {
@@ -41,6 +41,8 @@ app.use((req, res, next) => {
   };
   next();
 });
+
+app.use("/workspaces", workspacesRoutes);
 
 app.get("/health", healthCheck);
 
