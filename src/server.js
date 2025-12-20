@@ -10,7 +10,7 @@ const articlesRoutes = require("./routes/articles");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
 const healthCheck = require("./utils/healthCheck");
-const workspacesRoutes = require("./routes/workspaces-routes");
+const workspacesRoutes = require("./routes/workspaces");
 const http = require("http");
 const { Server } = require("socket.io");
 

@@ -3,14 +3,16 @@ const Article = db.Article;
 const Comment = db.Comment;
 const Attachment = db.Attachment;
 const Workspace = db.Workspace;
+const fs = require("fs");
+const path = require("path");
+const { ATTACHMENTS_DIR } = require("../constants");
 
 exports.list = async (req, res) => {
   try {
     const articles = await Article.findAll({
+      attributes: ["id", "title", "content", "createdAt", "updatedAt"],
       include: [
-        { model: Attachment, as: "Attachments" },
-        { model: Comment, as: "Comments" },
-        { model: Workspace, as: "Workspace" },
+        { model: Workspace, as: "Workspace", attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -90,10 +92,6 @@ exports.delete = async (req, res) => {
       include: [{ model: Attachment, as: "Attachments" }],
     });
     if (!article) return res.status(404).json({ error: "Article not found." });
-
-    const fs = require("fs");
-    const path = require("path");
-    const { ATTACHMENTS_DIR } = require("../constants");
 
     if (article.Attachments && article.Attachments.length > 0) {
       for (const attachment of article.Attachments) {
