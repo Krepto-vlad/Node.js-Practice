@@ -15,6 +15,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "articleId",
         as: "Attachments",
       });
+      Article.hasMany(models.ArticleVersion, {
+        foreignKey: "articleId",
+        as: "Versions",
+      });
     }
   }
   Article.init(
