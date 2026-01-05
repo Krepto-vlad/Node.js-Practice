@@ -39,6 +39,8 @@ router.get("/:id", articlesController.get);
 router.post("/", articlesController.create);
 router.put("/:id", articlesController.update);
 router.delete("/:id", articlesController.delete);
+router.get("/:id/versions", articlesController.getVersions);
+router.get("/:id/versions/:versionNumber", articlesController.getVersion);
 
 router.post(
   "/:id/attachments",

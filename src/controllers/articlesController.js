@@ -3,6 +3,7 @@ const Article = db.Article;
 const Comment = db.Comment;
 const Attachment = db.Attachment;
 const Workspace = db.Workspace;
+const ArticleVersion = db.ArticleVersion;
 const fs = require("fs");
 const path = require("path");
 const { ATTACHMENTS_DIR } = require("../constants");
@@ -10,13 +11,40 @@ const { ATTACHMENTS_DIR } = require("../constants");
 exports.list = async (req, res) => {
   try {
     const articles = await Article.findAll({
-      attributes: ["id", "title", "content", "createdAt", "updatedAt"],
       include: [
-        { model: Workspace, as: "Workspace", attributes: ["id", "name"] },
+        { model: Workspace, as: "Workspace" },
+        {
+          model: ArticleVersion,
+          as: "Versions",
+          separate: true,
+          order: [["version", "DESC"]],
+          limit: 1,
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
-    res.json(articles);
+
+    const articlesWithVersions = articles.map((article) => {
+      const currentVersion =
+        article.Versions && article.Versions.length > 0
+          ? article.Versions[0]
+          : null;
+
+      return {
+        ...article.toJSON(),
+        currentVersion: currentVersion ? currentVersion.version : null,
+        latestVersionData: currentVersion
+          ? {
+              version: currentVersion.version,
+              title: currentVersion.title,
+              content: currentVersion.content,
+              createdAt: currentVersion.createdAt,
+            }
+          : null,
+      };
+    });
+
+    res.json(articlesWithVersions);
   } catch (e) {
     console.error("Error fetching articles:", e);
     res.status(500).json({ error: "Failed to read articles." });
@@ -30,6 +58,13 @@ exports.get = async (req, res) => {
         { model: Attachment, as: "Attachments" },
         { model: Comment, as: "Comments" },
         { model: Workspace, as: "Workspace" },
+        {
+          model: ArticleVersion,
+          as: "Versions",
+          separate: true,
+          order: [["version", "DESC"]],
+          limit: 1,
+        },
       ],
     });
     if (!article) return res.status(404).json({ error: "Article not found." });
@@ -40,7 +75,25 @@ exports.get = async (req, res) => {
       attachments: article.Attachments,
     });
 
-    res.json(article);
+    const currentVersion =
+      article.Versions && article.Versions.length > 0
+        ? article.Versions[0]
+        : null;
+
+    const response = {
+      ...article.toJSON(),
+      currentVersion: currentVersion ? currentVersion.version : null,
+      latestVersionData: currentVersion
+        ? {
+            version: currentVersion.version,
+            title: currentVersion.title,
+            content: currentVersion.content,
+            createdAt: currentVersion.createdAt,
+          }
+        : null,
+    };
+
+    res.json(response);
   } catch (e) {
     console.error("Error fetching article:", e);
     res.status(500).json({ error: "Failed to fetch article." });
@@ -56,8 +109,26 @@ exports.create = async (req, res) => {
     return res.status(400).json({ error: "Workspace ID is required." });
   }
   try {
-    const article = await Article.create({ title, content, workspaceId });
-    res.status(201).json({ id: article.id });
+    const result = await db.sequelize.transaction(async (t) => {
+      const article = await Article.create(
+        { title, content, workspaceId },
+        { transaction: t }
+      );
+
+      await ArticleVersion.create(
+        {
+          articleId: article.id,
+          version: 1,
+          title,
+          content,
+        },
+        { transaction: t }
+      );
+
+      return article;
+    });
+
+    res.status(201).json({ id: result.id });
   } catch (e) {
     console.error("Error creating article:", e);
     res.status(500).json({ error: "Failed to save article." });
@@ -73,13 +144,35 @@ exports.update = async (req, res) => {
     const article = await Article.findByPk(req.params.id);
     if (!article) return res.status(404).json({ error: "Article not found." });
 
-    article.title = title;
-    article.content = content;
-    await article.save();
+    const lastVersion = await ArticleVersion.findOne({
+      where: { articleId: article.id },
+      order: [["version", "DESC"]],
+    });
+
+    const nextVersion = lastVersion ? lastVersion.version + 1 : 1;
+
+    await db.sequelize.transaction(async (t) => {
+      await ArticleVersion.create(
+        {
+          articleId: article.id,
+          version: nextVersion,
+          title,
+          content,
+        },
+        { transaction: t }
+      );
+
+      article.title = title;
+      article.content = content;
+      await article.save({ transaction: t });
+    });
 
     res.notify &&
       res.notify("article-updated", { id: req.params.id, type: "edit" });
-    res.json({ message: "Article updated successfully." });
+    res.json({
+      message: "Article updated successfully.",
+      version: nextVersion,
+    });
   } catch (e) {
     console.error("Error updating article:", e);
     res.status(500).json({ error: "Failed to update article." });
@@ -109,5 +202,55 @@ exports.delete = async (req, res) => {
   } catch (e) {
     console.error("Error deleting article:", e);
     res.status(500).json({ error: "Failed to delete article." });
+  }
+};
+
+exports.getVersions = async (req, res) => {
+  try {
+    const article = await Article.findByPk(req.params.id);
+    if (!article) return res.status(404).json({ error: "Article not found." });
+
+    const versions = await ArticleVersion.findAll({
+      where: { articleId: req.params.id },
+      order: [["version", "DESC"]],
+    });
+
+    res.json(versions);
+  } catch (e) {
+    console.error("Error fetching versions:", e);
+    res.status(500).json({ error: "Failed to fetch versions." });
+  }
+};
+
+exports.getVersion = async (req, res) => {
+  try {
+    const article = await Article.findByPk(req.params.id);
+    if (!article) return res.status(404).json({ error: "Article not found." });
+
+    const version = await ArticleVersion.findOne({
+      where: {
+        articleId: req.params.id,
+        version: parseInt(req.params.versionNumber),
+      },
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: "Version not found." });
+    }
+
+    const response = {
+      ...article.toJSON(),
+      versionData: {
+        version: version.version,
+        title: version.title,
+        content: version.content,
+        createdAt: version.createdAt,
+      },
+    };
+
+    res.json(response);
+  } catch (e) {
+    console.error("Error fetching version:", e);
+    res.status(500).json({ error: "Failed to fetch version." });
   }
 };
