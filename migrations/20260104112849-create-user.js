@@ -42,7 +42,6 @@ module.exports = {
       },
     });
 
-    // Add index on email for faster lookups
     await queryInterface.addIndex("Users", ["email"]);
   },
 
