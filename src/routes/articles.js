@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const router = express.Router();
 const articlesController = require("../controllers/articlesController");
+const { authenticate } = require("../middleware/auth");
 const multer = require("multer");
 const {
   ATTACHMENTS_DIR,
@@ -36,9 +37,9 @@ router.use("/:articleId/comments", commentsRouter);
 
 router.get("/", articlesController.list);
 router.get("/:id", articlesController.get);
-router.post("/", articlesController.create);
-router.put("/:id", articlesController.update);
-router.delete("/:id", articlesController.delete);
+router.post("/", authenticate, articlesController.create);
+router.put("/:id", authenticate, articlesController.update);
+router.delete("/:id", authenticate, articlesController.delete);
 router.get("/:id/versions", articlesController.getVersions);
 router.get("/:id/versions/:versionNumber", articlesController.getVersion);
 

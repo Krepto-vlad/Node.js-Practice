@@ -7,6 +7,8 @@ const cors = require("cors");
 const fs = require("fs");
 const { ATTACHMENTS_DIR } = require("./constants");
 const articlesRoutes = require("./routes/articles");
+const authRoutes = require("./routes/auth");
+const usersRoutes = require("./routes/users");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
 const healthCheck = require("./utils/healthCheck");
@@ -46,6 +48,8 @@ app.use("/workspaces", workspacesRoutes);
 
 app.get("/health", healthCheck);
 
+app.use("/auth", authRoutes);
+app.use("/users", usersRoutes);
 app.use("/articles", articlesRoutes);
 
 app.use(errorHandler);

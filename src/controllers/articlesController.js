@@ -108,10 +108,20 @@ exports.create = async (req, res) => {
   if (!workspaceId) {
     return res.status(400).json({ error: "Workspace ID is required." });
   }
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
   try {
     const result = await db.sequelize.transaction(async (t) => {
       const article = await Article.create(
-        { title, content, workspaceId },
+        {
+          title,
+          content,
+          workspaceId,
+          userId: req.user.id,
+        },
         { transaction: t }
       );
 
@@ -140,9 +150,24 @@ exports.update = async (req, res) => {
   if (!title || !content) {
     return res.status(400).json({ error: "Title and content are required." });
   }
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
   try {
     const article = await Article.findByPk(req.params.id);
     if (!article) return res.status(404).json({ error: "Article not found." });
+
+    if (
+      article.userId &&
+      article.userId !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to edit this article." });
+    }
 
     const lastVersion = await ArticleVersion.findOne({
       where: { articleId: article.id },
@@ -180,11 +205,25 @@ exports.update = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
   try {
     const article = await Article.findByPk(req.params.id, {
       include: [{ model: Attachment, as: "Attachments" }],
     });
     if (!article) return res.status(404).json({ error: "Article not found." });
+
+    if (
+      article.userId &&
+      article.userId !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "You do not have permission to delete this article." });
+    }
 
     if (article.Attachments && article.Attachments.length > 0) {
       for (const attachment of article.Attachments) {
