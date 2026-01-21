@@ -56,14 +56,12 @@ exports.search = async (req, res) => {
   try {
     const { q } = req.query;
 
-    // If no search query provided, return empty results
     if (!q || q.trim() === '') {
       return res.json([]);
     }
 
     const searchTerm = q.trim();
 
-    // Search in both title and content (case-insensitive)
     const articles = await Article.findAll({
       where: {
         [Op.or]: [
@@ -84,7 +82,6 @@ exports.search = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    // Format results same as list endpoint
     const articlesWithVersions = articles.map((article) => {
       const currentVersion =
         article.Versions && article.Versions.length > 0
@@ -171,7 +168,6 @@ exports.create = async (req, res) => {
   }
 
   try {
-    // User is already authenticated by middleware
     const result = await db.sequelize.transaction(async (t) => {
       const article = await Article.create(
         {
