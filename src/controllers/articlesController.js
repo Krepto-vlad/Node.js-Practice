@@ -109,11 +109,8 @@ exports.create = async (req, res) => {
     return res.status(400).json({ error: "Workspace ID is required." });
   }
 
-  if (!req.user) {
-    return res.status(401).json({ error: "Authentication required." });
-  }
-
   try {
+    // User is already authenticated by middleware
     const result = await db.sequelize.transaction(async (t) => {
       const article = await Article.create(
         {
@@ -122,7 +119,7 @@ exports.create = async (req, res) => {
           workspaceId,
           userId: req.user.id,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       await ArticleVersion.create(
@@ -132,7 +129,7 @@ exports.create = async (req, res) => {
           title,
           content,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       return article;
@@ -151,23 +148,8 @@ exports.update = async (req, res) => {
     return res.status(400).json({ error: "Title and content are required." });
   }
 
-  if (!req.user) {
-    return res.status(401).json({ error: "Authentication required." });
-  }
-
   try {
-    const article = await Article.findByPk(req.params.id);
-    if (!article) return res.status(404).json({ error: "Article not found." });
-
-    if (
-      article.userId &&
-      article.userId !== req.user.id &&
-      req.user.role !== "admin"
-    ) {
-      return res
-        .status(403)
-        .json({ error: "You do not have permission to edit this article." });
-    }
+    const article = req.article;
 
     const lastVersion = await ArticleVersion.findOne({
       where: { articleId: article.id },
@@ -184,7 +166,7 @@ exports.update = async (req, res) => {
           title,
           content,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       article.title = title;
@@ -205,28 +187,18 @@ exports.update = async (req, res) => {
 };
 
 exports.delete = async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: "Authentication required." });
-  }
-
   try {
-    const article = await Article.findByPk(req.params.id, {
+    const article = req.article;
+
+    const articleWithAttachments = await Article.findByPk(article.id, {
       include: [{ model: Attachment, as: "Attachments" }],
     });
-    if (!article) return res.status(404).json({ error: "Article not found." });
 
     if (
-      article.userId &&
-      article.userId !== req.user.id &&
-      req.user.role !== "admin"
+      articleWithAttachments.Attachments &&
+      articleWithAttachments.Attachments.length > 0
     ) {
-      return res
-        .status(403)
-        .json({ error: "You do not have permission to delete this article." });
-    }
-
-    if (article.Attachments && article.Attachments.length > 0) {
-      for (const attachment of article.Attachments) {
+      for (const attachment of articleWithAttachments.Attachments) {
         const filePath = path.join(ATTACHMENTS_DIR, attachment.filename);
         try {
           await fs.promises.unlink(filePath);

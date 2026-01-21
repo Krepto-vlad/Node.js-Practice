@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const { User } = require("../../models");
 
-const JWT_SECRET = process.env.JWT_SECRET || "kreptonite_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
 router.post(
@@ -48,7 +48,7 @@ router.post(
           role: user.role,
         },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: JWT_EXPIRES_IN },
       );
 
       res.status(201).json({
@@ -59,7 +59,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 router.post(
@@ -98,7 +98,7 @@ router.post(
           role: user.role,
         },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: JWT_EXPIRES_IN },
       );
 
       res.json({
@@ -109,7 +109,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 module.exports = router;
