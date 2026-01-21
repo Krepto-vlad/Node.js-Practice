@@ -108,11 +108,18 @@ exports.create = async (req, res) => {
   if (!workspaceId) {
     return res.status(400).json({ error: "Workspace ID is required." });
   }
+
   try {
+    // User is already authenticated by middleware
     const result = await db.sequelize.transaction(async (t) => {
       const article = await Article.create(
-        { title, content, workspaceId },
-        { transaction: t }
+        {
+          title,
+          content,
+          workspaceId,
+          userId: req.user.id,
+        },
+        { transaction: t },
       );
 
       await ArticleVersion.create(
@@ -122,7 +129,7 @@ exports.create = async (req, res) => {
           title,
           content,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       return article;
@@ -140,9 +147,9 @@ exports.update = async (req, res) => {
   if (!title || !content) {
     return res.status(400).json({ error: "Title and content are required." });
   }
+
   try {
-    const article = await Article.findByPk(req.params.id);
-    if (!article) return res.status(404).json({ error: "Article not found." });
+    const article = req.article;
 
     const lastVersion = await ArticleVersion.findOne({
       where: { articleId: article.id },
@@ -159,7 +166,7 @@ exports.update = async (req, res) => {
           title,
           content,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       article.title = title;
@@ -181,13 +188,17 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const article = await Article.findByPk(req.params.id, {
+    const article = req.article;
+
+    const articleWithAttachments = await Article.findByPk(article.id, {
       include: [{ model: Attachment, as: "Attachments" }],
     });
-    if (!article) return res.status(404).json({ error: "Article not found." });
 
-    if (article.Attachments && article.Attachments.length > 0) {
-      for (const attachment of article.Attachments) {
+    if (
+      articleWithAttachments.Attachments &&
+      articleWithAttachments.Attachments.length > 0
+    ) {
+      for (const attachment of articleWithAttachments.Attachments) {
         const filePath = path.join(ATTACHMENTS_DIR, attachment.filename);
         try {
           await fs.promises.unlink(filePath);

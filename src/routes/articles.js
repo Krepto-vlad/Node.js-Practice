@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const router = express.Router();
 const articlesController = require("../controllers/articlesController");
+const { authenticate, canModifyArticle } = require("../middleware/auth");
 const multer = require("multer");
 const {
   ATTACHMENTS_DIR,
@@ -36,9 +37,14 @@ router.use("/:articleId/comments", commentsRouter);
 
 router.get("/", articlesController.list);
 router.get("/:id", articlesController.get);
-router.post("/", articlesController.create);
-router.put("/:id", articlesController.update);
-router.delete("/:id", articlesController.delete);
+router.post("/", authenticate, articlesController.create);
+router.put("/:id", authenticate, canModifyArticle, articlesController.update);
+router.delete(
+  "/:id",
+  authenticate,
+  canModifyArticle,
+  articlesController.delete,
+);
 router.get("/:id/versions", articlesController.getVersions);
 router.get("/:id/versions/:versionNumber", articlesController.getVersion);
 
@@ -58,7 +64,7 @@ router.post(
       }
 
       console.log(
-        `Uploading ${req.files.length} file(s) to article ${req.params.id}`
+        `Uploading ${req.files.length} file(s) to article ${req.params.id}`,
       );
 
       for (const file of req.files) {
@@ -81,14 +87,14 @@ router.post(
       console.error("Upload error:", error);
       res.status(500).json({ error: "Failed to upload files." });
     }
-  }
+  },
 );
 
 router.delete("/:id/attachments/:filename", async (req, res) => {
   try {
     const { id } = req.params;
     const filename = decodeURIComponent(req.params.filename);
-    
+
     const article = await Article.findByPk(id);
     if (!article) return res.status(404).json({ error: "Article not found." });
 
