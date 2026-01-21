@@ -35,6 +35,8 @@ const upload = multer({
 const commentsRouter = require("./comments");
 router.use("/:articleId/comments", commentsRouter);
 
+// Search must come before /:id to avoid conflict
+router.get("/search", articlesController.search);
 router.get("/", articlesController.list);
 router.get("/:id", articlesController.get);
 router.post("/", authenticate, articlesController.create);
