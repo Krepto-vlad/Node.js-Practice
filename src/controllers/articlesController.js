@@ -4,6 +4,7 @@ const Comment = db.Comment;
 const Attachment = db.Attachment;
 const Workspace = db.Workspace;
 const ArticleVersion = db.ArticleVersion;
+const { Op } = require("sequelize");
 const fs = require("fs");
 const path = require("path");
 const { ATTACHMENTS_DIR } = require("../constants");
@@ -48,6 +49,63 @@ exports.list = async (req, res) => {
   } catch (e) {
     console.error("Error fetching articles:", e);
     res.status(500).json({ error: "Failed to read articles." });
+  }
+};
+
+exports.search = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim() === "") {
+      return res.json([]);
+    }
+
+    const searchTerm = q.trim();
+
+    const articles = await Article.findAll({
+      where: {
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${searchTerm}%` } },
+          { content: { [Op.iLike]: `%${searchTerm}%` } },
+        ],
+      },
+      include: [
+        { model: Workspace, as: "Workspace" },
+        {
+          model: ArticleVersion,
+          as: "Versions",
+          separate: true,
+          order: [["version", "DESC"]],
+          limit: 1,
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const articlesWithVersions = articles.map((article) => {
+      const currentVersion =
+        article.Versions && article.Versions.length > 0
+          ? article.Versions[0]
+          : null;
+
+      return {
+        ...article.toJSON(),
+        currentVersion: currentVersion ? currentVersion.version : null,
+        latestVersionData: currentVersion
+          ? {
+              version: currentVersion.version,
+              title: currentVersion.title,
+              content: currentVersion.content,
+              createdAt: currentVersion.createdAt,
+            }
+          : null,
+      };
+    });
+
+    res.json(articlesWithVersions);
+  } catch (e) {
+    console.error("Error searching articles:", e);
+    res.status(500).json({ error: "Failed to search articles." });
   }
 };
 
