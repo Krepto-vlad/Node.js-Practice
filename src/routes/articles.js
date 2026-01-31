@@ -38,6 +38,7 @@ router.use("/:articleId/comments", commentsRouter);
 router.get("/search", articlesController.search);
 router.get("/", articlesController.list);
 router.get("/:id", articlesController.get);
+router.get("/:id/export-pdf", articlesController.exportToPdf);
 router.post("/", authenticate, articlesController.create);
 router.put("/:id", authenticate, canModifyArticle, articlesController.update);
 router.delete(

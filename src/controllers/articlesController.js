@@ -4,10 +4,12 @@ const Comment = db.Comment;
 const Attachment = db.Attachment;
 const Workspace = db.Workspace;
 const ArticleVersion = db.ArticleVersion;
+const User = db.User;
 const { Op } = require("sequelize");
 const fs = require("fs");
 const path = require("path");
 const { ATTACHMENTS_DIR } = require("../constants");
+const PDFDocument = require("pdfkit");
 
 exports.list = async (req, res) => {
   try {
@@ -321,5 +323,130 @@ exports.getVersion = async (req, res) => {
   } catch (e) {
     console.error("Error fetching version:", e);
     res.status(500).json({ error: "Failed to fetch version." });
+  }
+};
+
+exports.exportToPdf = async (req, res) => {
+  try {
+    const articleId = req.params.id;
+
+    const article = await Article.findByPk(articleId, {
+      include: [
+        { model: Workspace, as: "Workspace" },
+        { model: User, as: "User" },
+        {
+          model: ArticleVersion,
+          as: "Versions",
+          separate: true,
+          order: [["version", "DESC"]],
+          limit: 1,
+        },
+      ],
+    });
+
+    if (!article) {
+      return res.status(404).json({ error: "Article not found." });
+    }
+
+    const latestVersion =
+      article.Versions && article.Versions.length > 0
+        ? article.Versions[0]
+        : null;
+
+    const cleanText = (text) => {
+      if (!text) return text;
+      return text.replace(/\\(.)/g, '$1');
+    };
+
+    const title = cleanText(latestVersion ? latestVersion.title : article.title);
+    const content = cleanText(latestVersion ? latestVersion.content : article.content);
+    const authorName = article.User ? article.User.name : "Unknown Author";
+    const workspaceName = article.Workspace
+      ? article.Workspace.name
+      : "No Workspace";
+    const createdAt = new Date(article.createdAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const currentVersion = latestVersion ? latestVersion.version : 1;
+
+    const doc = new PDFDocument({
+      margin: 50,
+      size: "A4",
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="article-${articleId}.pdf"`,
+    );
+
+    doc.pipe(res);
+
+    const arialPath = "C:\\Windows\\Fonts\\arial.ttf";
+    const arialBoldPath = "C:\\Windows\\Fonts\\arialbd.ttf";
+    const fontExists = fs.existsSync(arialPath);
+
+    if (fontExists) {
+      doc.registerFont("Arial", arialPath);
+      doc.registerFont("Arial-Bold", arialBoldPath);
+    }
+
+    doc
+      .fontSize(24)
+      .font(fontExists ? "Arial-Bold" : "Helvetica-Bold")
+      .text(title, { align: "left" })
+      .moveDown(0.5);
+
+    doc
+      .fontSize(10)
+      .font(fontExists ? "Arial" : "Helvetica")
+      .fillColor("#666666")
+      .text(`Author: ${authorName}`, { continued: false })
+      .text(`Workspace: ${workspaceName}`)
+      .text(`Created: ${createdAt}`)
+      .text(`Version: ${currentVersion}`)
+      .moveDown(1.5);
+
+    doc
+      .strokeColor("#cccccc")
+      .lineWidth(1)
+      .moveTo(50, doc.y)
+      .lineTo(545, doc.y)
+      .stroke()
+      .moveDown(1);
+
+    doc
+      .fontSize(12)
+      .fillColor("#000000")
+      .font(fontExists ? "Arial" : "Helvetica")
+      .text(content, {
+        align: "left",
+        lineGap: 4,
+      });
+
+    const pageCount = doc.bufferedPageRange().count;
+    for (let i = 0; i < pageCount; i++) {
+      doc.switchToPage(i);
+      doc
+        .fontSize(9)
+        .fillColor("#999999")
+        .font(fontExists ? "Arial" : "Helvetica")
+        .text(
+          `Page ${i + 1} of ${pageCount}`,
+          50,
+          doc.page.height - 50,
+          { align: "center" },
+        );
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error("Error exporting article to PDF:", error);
+
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to export article to PDF." });
+    }
   }
 };
