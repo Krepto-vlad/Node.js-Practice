@@ -4,6 +4,7 @@ const Comment = db.Comment;
 const Attachment = db.Attachment;
 const Workspace = db.Workspace;
 const ArticleVersion = db.ArticleVersion;
+const { Op } = require("sequelize");
 const fs = require("fs");
 const path = require("path");
 const { ATTACHMENTS_DIR } = require("../constants");
@@ -48,6 +49,63 @@ exports.list = async (req, res) => {
   } catch (e) {
     console.error("Error fetching articles:", e);
     res.status(500).json({ error: "Failed to read articles." });
+  }
+};
+
+exports.search = async (req, res) => {
+  try {
+    const { q: searchQuery } = req.query;
+
+    if (!searchQuery || searchQuery.trim() === "") {
+      return res.json([]);
+    }
+
+    const sanitizedSearchTerm = searchQuery.trim();
+
+    const matchingArticles = await Article.findAll({
+      where: {
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${sanitizedSearchTerm}%` } },
+          { content: { [Op.iLike]: `%${sanitizedSearchTerm}%` } },
+        ],
+      },
+      include: [
+        { model: Workspace, as: "Workspace" },
+        {
+          model: ArticleVersion,
+          as: "Versions",
+          separate: true,
+          order: [["version", "DESC"]],
+          limit: 1,
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const articlesWithLatestVersion = matchingArticles.map((article) => {
+      const latestVersion =
+        article.Versions && article.Versions.length > 0
+          ? article.Versions[0]
+          : null;
+
+      return {
+        ...article.toJSON(),
+        currentVersion: latestVersion ? latestVersion.version : null,
+        latestVersionData: latestVersion
+          ? {
+              version: latestVersion.version,
+              title: latestVersion.title,
+              content: latestVersion.content,
+              createdAt: latestVersion.createdAt,
+            }
+          : null,
+      };
+    });
+
+    res.json(articlesWithLatestVersion);
+  } catch (error) {
+    console.error("Error searching articles:", error);
+    res.status(500).json({ error: "Failed to search articles." });
   }
 };
 
