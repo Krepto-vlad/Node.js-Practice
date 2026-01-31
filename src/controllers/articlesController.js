@@ -54,19 +54,19 @@ exports.list = async (req, res) => {
 
 exports.search = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q: searchQuery } = req.query;
 
-    if (!q || q.trim() === "") {
+    if (!searchQuery || searchQuery.trim() === "") {
       return res.json([]);
     }
 
-    const searchTerm = q.trim();
+    const sanitizedSearchTerm = searchQuery.trim();
 
-    const articles = await Article.findAll({
+    const matchingArticles = await Article.findAll({
       where: {
         [Op.or]: [
-          { title: { [Op.iLike]: `%${searchTerm}%` } },
-          { content: { [Op.iLike]: `%${searchTerm}%` } },
+          { title: { [Op.iLike]: `%${sanitizedSearchTerm}%` } },
+          { content: { [Op.iLike]: `%${sanitizedSearchTerm}%` } },
         ],
       },
       include: [
@@ -82,29 +82,29 @@ exports.search = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    const articlesWithVersions = articles.map((article) => {
-      const currentVersion =
+    const articlesWithLatestVersion = matchingArticles.map((article) => {
+      const latestVersion =
         article.Versions && article.Versions.length > 0
           ? article.Versions[0]
           : null;
 
       return {
         ...article.toJSON(),
-        currentVersion: currentVersion ? currentVersion.version : null,
-        latestVersionData: currentVersion
+        currentVersion: latestVersion ? latestVersion.version : null,
+        latestVersionData: latestVersion
           ? {
-              version: currentVersion.version,
-              title: currentVersion.title,
-              content: currentVersion.content,
-              createdAt: currentVersion.createdAt,
+              version: latestVersion.version,
+              title: latestVersion.title,
+              content: latestVersion.content,
+              createdAt: latestVersion.createdAt,
             }
           : null,
       };
     });
 
-    res.json(articlesWithVersions);
-  } catch (e) {
-    console.error("Error searching articles:", e);
+    res.json(articlesWithLatestVersion);
+  } catch (error) {
+    console.error("Error searching articles:", error);
     res.status(500).json({ error: "Failed to search articles." });
   }
 };
